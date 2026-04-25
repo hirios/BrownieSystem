@@ -1,0 +1,265 @@
+{% extends "base.html" %}
+{% block title %}Histórico{% endblock %}
+{% block page_title %}Histórico{% endblock %}
+
+{% block content %}
+<div class="space-y-5">
+
+  <div class="hidden md:block">
+    <h2 class="text-2xl font-bold text-stone-800">Histórico</h2>
+    <p class="text-stone-500 text-sm mt-0.5">Todos os registros de produções e transações</p>
+  </div>
+
+  <!-- Filtro de período -->
+  {% include '_filtro.html' %}
+
+  <!-- Tabs -->
+  <div class="flex gap-2">
+    <button onclick="showSection('transacoes')" id="btn-transacoes"
+      class="px-4 py-2.5 rounded-xl text-sm font-semibold bg-choco-600 text-white transition-all shadow-sm">
+      🛍️ Transações
+    </button>
+    <button onclick="showSection('lotes')" id="btn-lotes"
+      class="px-4 py-2.5 rounded-xl text-sm font-medium bg-white text-stone-600 border border-stone-200 hover:bg-choco-50 hover:text-choco-700 transition-all">
+      📦 Produções
+    </button>
+  </div>
+
+  <!-- ── Transações ─────────────────────────────────────────────────── -->
+  <div id="section-transacoes">
+    {% if transacoes %}
+
+    {% set total_vendas = transacoes | selectattr('tipo', 'eq', 'venda') | list %}
+    {% set total_comidos = transacoes | selectattr('tipo', 'eq', 'comido') | list %}
+    {% set vendas_escola = total_vendas | selectattr('local', 'eq', 'escola') | list %}
+    {% set vendas_empresa = total_vendas | selectattr('local', 'eq', 'empresa') | list %}
+
+    <!-- Mini resumo -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div class="bg-white rounded-2xl p-4 shadow-sm border border-amber-100 text-center">
+        <p class="text-2xl font-bold text-stone-700">{{ transacoes | length }}</p>
+        <p class="text-xs text-stone-500 mt-0.5">Total registros</p>
+      </div>
+      <div class="bg-white rounded-2xl p-4 shadow-sm border border-amber-100 text-center">
+        <p class="text-2xl font-bold text-green-600">{{ total_vendas | length }}</p>
+        <p class="text-xs text-stone-500 mt-0.5">🛍️ Vendas</p>
+      </div>
+      <div class="bg-white rounded-2xl p-4 shadow-sm border border-amber-100 text-center">
+        <p class="text-2xl font-bold text-blue-600">{{ vendas_escola | length }}</p>
+        <p class="text-xs text-stone-500 mt-0.5">🏫 Escola</p>
+      </div>
+      <div class="bg-white rounded-2xl p-4 shadow-sm border border-amber-100 text-center">
+        <p class="text-2xl font-bold text-purple-600">{{ vendas_empresa | length }}</p>
+        <p class="text-xs text-stone-500 mt-0.5">🏢 Empresa</p>
+      </div>
+    </div>
+
+    <!-- Cards mobile -->
+    <div class="md:hidden space-y-2">
+      {% for t in transacoes %}
+      <div class="bg-white rounded-xl border border-amber-100 p-3.5 shadow-sm">
+        <div class="flex items-center justify-between gap-2">
+          <div class="flex items-center gap-2 flex-wrap">
+            <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold
+              {% if t.tipo == 'venda' %}bg-green-100 text-green-700{% else %}bg-amber-100 text-amber-700{% endif %}">
+              {% if t.tipo == 'venda' %}🛍️ Venda{% else %}😋 Comido{% endif %}
+            </span>
+            {% if t.local == 'escola' %}
+            <span class="inline-flex items-center gap-0.5 bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full font-medium">🏫 Escola</span>
+            {% elif t.local == 'empresa' %}
+            <span class="inline-flex items-center gap-0.5 bg-purple-100 text-purple-700 text-xs px-2 py-0.5 rounded-full font-medium">🏢 Empresa</span>
+            {% endif %}
+          </div>
+          <form method="POST" action="/deletar/transacao/{{ t.id }}"
+            onsubmit="return confirm('Remover este registro?\n\n{{ t.vendedora.nome }} · {{ t.quantidade }}x {{ t.produto.nome }}')">
+            <button type="submit" class="w-7 h-7 rounded-lg flex items-center justify-center text-stone-300 hover:text-red-500 hover:bg-red-50 transition-all text-xs font-bold shrink-0">✕</button>
+          </form>
+        </div>
+        <div class="mt-2.5 flex items-end justify-between gap-2">
+          <div class="min-w-0">
+            <p class="text-sm font-semibold text-stone-700 truncate">{{ t.vendedora.nome }}</p>
+            <p class="text-xs text-stone-500 truncate">{{ t.produto.nome }}</p>
+            <p class="text-xs text-stone-400 mt-1">{{ t.data.strftime('%d/%m/%Y') }}</p>
+          </div>
+          <div class="text-right shrink-0">
+            <p class="text-base font-bold {% if t.tipo == 'venda' %}text-green-600{% else %}text-stone-400{% endif %}">
+              {% if t.tipo == 'venda' %}R$ {{ "%.2f"|format(t.quantidade * (t.preco_unitario or 0)) }}{% else %}—{% endif %}
+            </p>
+            <p class="text-xs text-stone-400">{{ t.quantidade }} un.</p>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Tabela desktop -->
+    <div class="hidden md:block bg-white rounded-2xl shadow-sm border border-amber-100 overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead>
+            <tr class="bg-amber-50 border-b border-amber-100">
+              <th class="text-left px-4 py-3 text-xs font-semibold text-stone-500 uppercase tracking-wide">Tipo</th>
+              <th class="text-left px-4 py-3 text-xs font-semibold text-stone-500 uppercase tracking-wide">Quem</th>
+              <th class="text-left px-4 py-3 text-xs font-semibold text-stone-500 uppercase tracking-wide">Produto</th>
+              <th class="text-left px-4 py-3 text-xs font-semibold text-stone-500 uppercase tracking-wide">Local</th>
+              <th class="text-right px-4 py-3 text-xs font-semibold text-stone-500 uppercase tracking-wide">Qtd</th>
+              <th class="text-right px-4 py-3 text-xs font-semibold text-stone-500 uppercase tracking-wide">Valor</th>
+              <th class="text-right px-4 py-3 text-xs font-semibold text-stone-500 uppercase tracking-wide">Data</th>
+              <th class="px-4 py-3 w-8"></th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-stone-50">
+            {% for t in transacoes %}
+            <tr class="hover:bg-amber-50/40 transition-colors group">
+              <td class="px-4 py-3">
+                <span class="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold
+                  {% if t.tipo == 'venda' %}bg-green-100 text-green-700{% else %}bg-amber-100 text-amber-700{% endif %}">
+                  {% if t.tipo == 'venda' %}🛍️ Venda{% else %}😋 Comido{% endif %}
+                </span>
+              </td>
+              <td class="px-4 py-3 text-sm font-medium text-stone-700">{{ t.vendedora.nome }}</td>
+              <td class="px-4 py-3 text-sm text-stone-600">{{ t.produto.nome }}</td>
+              <td class="px-4 py-3">
+                {% if t.local == 'escola' %}
+                <span class="inline-flex items-center gap-1 bg-blue-100 text-blue-700 text-xs px-2 py-0.5 rounded-full font-medium">🏫 Escola</span>
+                {% elif t.local == 'empresa' %}
+                <span class="inline-flex items-center gap-1 bg-purple-100 text-purple-700 text-xs px-2 py-0.5 rounded-full font-medium">🏢 Empresa</span>
+                {% else %}
+                <span class="text-stone-300 text-xs">—</span>
+                {% endif %}
+              </td>
+              <td class="px-4 py-3 text-sm font-semibold text-stone-700 text-right">{{ t.quantidade }}</td>
+              <td class="px-4 py-3 text-sm font-semibold text-right
+                {% if t.tipo == 'venda' %}text-green-600{% else %}text-stone-400{% endif %}">
+                {% if t.tipo == 'venda' %}R$ {{ "%.2f"|format(t.quantidade * (t.preco_unitario or 0)) }}{% else %}—{% endif %}
+              </td>
+              <td class="px-4 py-3 text-xs text-stone-400 text-right whitespace-nowrap">
+                {{ t.data.strftime('%d/%m/%Y') }}
+              </td>
+              <td class="px-4 py-3 text-right">
+                <form method="POST" action="/deletar/transacao/{{ t.id }}"
+                  onsubmit="return confirm('Remover este registro?\n\n{{ t.vendedora.nome }} · {{ t.quantidade }}x {{ t.produto.nome }}')">
+                  <button type="submit"
+                    class="w-6 h-6 rounded-lg flex items-center justify-center text-stone-300 hover:text-red-500 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100 text-xs font-bold">
+                    ✕
+                  </button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    {% else %}
+    <div class="bg-white rounded-2xl p-12 shadow-sm border border-amber-100 text-center">
+      <p class="text-5xl mb-3">🛍️</p>
+      <p class="text-stone-500">Nenhuma transação registrada ainda.</p>
+      <a href="/lancamentos" class="mt-4 inline-block text-choco-600 hover:text-choco-800 text-sm font-semibold underline">Fazer primeiro lançamento →</a>
+    </div>
+    {% endif %}
+  </div>
+
+  <!-- ── Lotes de Produção ──────────────────────────────────────────── -->
+  <div id="section-lotes" class="hidden">
+    {% if lotes %}
+
+    {% set total_qtd = lotes | sum(attribute='quantidade') %}
+    <div class="bg-white rounded-2xl p-4 shadow-sm border border-amber-100 flex items-center gap-4">
+      <div class="w-12 h-12 rounded-xl bg-choco-100 flex items-center justify-center text-2xl shrink-0">📦</div>
+      <div>
+        <p class="text-xs text-stone-500">Total produzido</p>
+        <p class="text-2xl font-bold text-choco-700">{{ total_qtd }} unidades</p>
+      </div>
+    </div>
+
+    <!-- Cards mobile -->
+    <div class="md:hidden space-y-2">
+      {% for l in lotes %}
+      <div class="bg-white rounded-xl border border-amber-100 p-3.5 shadow-sm">
+        <div class="flex items-start justify-between gap-2">
+          <p class="text-sm font-semibold text-stone-700">📦 {{ l.produto.nome }}</p>
+          <form method="POST" action="/deletar/lote/{{ l.id }}"
+            onsubmit="return confirm('Remover este lote?\n\n{{ l.produto.nome }} · {{ l.quantidade }} unidades')">
+            <button type="submit" class="w-7 h-7 rounded-lg flex items-center justify-center text-stone-300 hover:text-red-500 hover:bg-red-50 transition-all text-xs font-bold shrink-0">✕</button>
+          </form>
+        </div>
+        <div class="mt-2 flex items-end justify-between gap-2">
+          <div>
+            <p class="text-xs text-stone-400">{{ l.data.strftime('%d/%m/%Y') }}</p>
+            {% if l.observacao %}<p class="text-xs text-stone-400 mt-0.5 italic">{{ l.observacao }}</p>{% endif %}
+          </div>
+          <div class="text-right shrink-0">
+            <p class="text-base font-bold text-stone-700">{{ l.quantidade }} un.</p>
+            <p class="text-xs text-red-500 font-medium">R$ {{ "%.2f"|format(l.quantidade * l.produto.custo) }}</p>
+          </div>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+
+    <!-- Tabela desktop -->
+    <div class="hidden md:block bg-white rounded-2xl shadow-sm border border-amber-100 overflow-hidden">
+      <div class="overflow-x-auto">
+        <table class="w-full">
+          <thead>
+            <tr class="bg-amber-50 border-b border-amber-100">
+              <th class="text-left px-4 py-3 text-xs font-semibold text-stone-500 uppercase tracking-wide">Produto</th>
+              <th class="text-right px-4 py-3 text-xs font-semibold text-stone-500 uppercase tracking-wide">Qtd</th>
+              <th class="text-right px-4 py-3 text-xs font-semibold text-stone-500 uppercase tracking-wide">Custo Total</th>
+              <th class="text-right px-4 py-3 text-xs font-semibold text-stone-500 uppercase tracking-wide">Data</th>
+              <th class="text-left px-4 py-3 text-xs font-semibold text-stone-500 uppercase tracking-wide">Obs.</th>
+              <th class="px-4 py-3 w-8"></th>
+            </tr>
+          </thead>
+          <tbody class="divide-y divide-stone-50">
+            {% for l in lotes %}
+            <tr class="hover:bg-amber-50/40 transition-colors group">
+              <td class="px-4 py-3 text-sm font-medium text-stone-700"><span class="mr-1">📦</span> {{ l.produto.nome }}</td>
+              <td class="px-4 py-3 text-sm font-semibold text-stone-700 text-right">{{ l.quantidade }}</td>
+              <td class="px-4 py-3 text-sm font-semibold text-red-600 text-right">R$ {{ "%.2f"|format(l.quantidade * l.produto.custo) }}</td>
+              <td class="px-4 py-3 text-xs text-stone-400 text-right whitespace-nowrap">{{ l.data.strftime('%d/%m/%Y') }}</td>
+              <td class="px-4 py-3 text-xs text-stone-400">{{ l.observacao or '—' }}</td>
+              <td class="px-4 py-3 text-right">
+                <form method="POST" action="/deletar/lote/{{ l.id }}"
+                  onsubmit="return confirm('Remover este lote?\n\n{{ l.produto.nome }} · {{ l.quantidade }} unidades')">
+                  <button type="submit"
+                    class="w-6 h-6 rounded-lg flex items-center justify-center text-stone-300 hover:text-red-500 hover:bg-red-50 transition-all opacity-0 group-hover:opacity-100 text-xs font-bold">
+                    ✕
+                  </button>
+                </form>
+              </td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    {% else %}
+    <div class="bg-white rounded-2xl p-12 shadow-sm border border-amber-100 text-center">
+      <p class="text-5xl mb-3">📦</p>
+      <p class="text-stone-500">Nenhum lote de produção registrado.</p>
+    </div>
+    {% endif %}
+  </div>
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  const BTN_ACTIVE = 'px-4 py-2.5 rounded-xl text-sm font-semibold bg-choco-600 text-white transition-all shadow-sm';
+  const BTN_IDLE   = 'px-4 py-2.5 rounded-xl text-sm font-medium bg-white text-stone-600 border border-stone-200 hover:bg-choco-50 hover:text-choco-700 transition-all';
+
+  function showSection(name) {
+    ['transacoes', 'lotes'].forEach(s => {
+      document.getElementById('section-' + s).classList.add('hidden');
+      document.getElementById('btn-' + s).className = BTN_IDLE;
+    });
+    document.getElementById('section-' + name).classList.remove('hidden');
+    document.getElementById('btn-' + name).className = BTN_ACTIVE;
+  }
+</script>
+{% endblock %}

@@ -1,0 +1,109 @@
+<!-- Componente de filtro de data — incluído em dashboard e historico -->
+<div class="bg-white rounded-2xl shadow-sm border border-amber-100 overflow-hidden">
+
+  <div class="px-4 pt-4 pb-0 flex items-center gap-2">
+    <span class="text-base">📅</span>
+    <span class="text-sm font-semibold text-stone-600">Filtro de Período</span>
+    {% if data_inicio_dt or data_fim_dt %}
+    <span class="ml-auto text-xs bg-choco-100 text-choco-700 px-2.5 py-0.5 rounded-full font-semibold">Ativo</span>
+    {% endif %}
+  </div>
+
+  <div class="p-4 space-y-3">
+
+    <!-- Atalhos rápidos -->
+    <div class="flex flex-wrap gap-1.5">
+      <button type="button" onclick="filtroRapido('hoje')"
+        class="atalho-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition-all
+               {% if data_inicio == data_fim and data_inicio %}bg-choco-600 text-white{% else %}bg-stone-100 text-stone-600 hover:bg-choco-100 hover:text-choco-700{% endif %}">
+        Hoje
+      </button>
+      <button type="button" onclick="filtroRapido('semana')"
+        class="atalho-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition-all bg-stone-100 text-stone-600 hover:bg-choco-100 hover:text-choco-700">
+        7 dias
+      </button>
+      <button type="button" onclick="filtroRapido('mes')"
+        class="atalho-btn px-3 py-1.5 rounded-lg text-xs font-semibold transition-all bg-stone-100 text-stone-600 hover:bg-choco-100 hover:text-choco-700">
+        Mês atual
+      </button>
+      {% if data_inicio_dt or data_fim_dt %}
+      <a href="{{ request.path }}"
+        class="ml-auto px-3 py-1.5 rounded-lg text-xs font-semibold bg-red-50 text-red-500 hover:bg-red-100 border border-red-200 transition-all">
+        ✕ Limpar
+      </a>
+      {% endif %}
+    </div>
+
+    <!-- Inputs de data -->
+    <form method="GET" action="{{ request.path }}" id="filtro-form" class="flex items-end gap-2">
+      <div class="flex-1 min-w-0">
+        <label class="block text-xs font-medium text-stone-500 mb-1.5">De</label>
+        <input type="date" name="data_inicio" id="filtro-inicio" value="{{ data_inicio }}"
+          class="w-full px-3 py-2.5 rounded-xl border border-stone-200 text-stone-700 text-sm
+                 focus:outline-none focus:ring-2 focus:ring-choco-400 focus:border-transparent bg-white transition-all">
+      </div>
+      <div class="flex-1 min-w-0">
+        <label class="block text-xs font-medium text-stone-500 mb-1.5">Até</label>
+        <input type="date" name="data_fim" id="filtro-fim" value="{{ data_fim }}"
+          class="w-full px-3 py-2.5 rounded-xl border border-stone-200 text-stone-700 text-sm
+                 focus:outline-none focus:ring-2 focus:ring-choco-400 focus:border-transparent bg-white transition-all">
+      </div>
+      <button type="submit"
+        class="shrink-0 bg-choco-600 hover:bg-choco-700 active:scale-95 text-white px-5 py-2.5 rounded-xl text-sm font-semibold transition-all shadow-sm">
+        Filtrar
+      </button>
+    </form>
+
+  </div>
+
+  <!-- Banner do filtro ativo -->
+  {% if data_inicio_dt or data_fim_dt %}
+  <div class="bg-choco-50 border-t border-choco-100 px-4 py-2.5 flex items-center gap-2">
+    <span class="text-sm">🔍</span>
+    <span class="text-xs font-medium text-choco-800">
+      Mostrando dados
+      {% if data_inicio_dt and data_fim_dt %}
+        de <strong>{{ data_inicio_dt.strftime('%d/%m/%Y') }}</strong>
+        até <strong>{{ data_fim_dt.strftime('%d/%m/%Y') }}</strong>
+      {% elif data_inicio_dt %}
+        a partir de <strong>{{ data_inicio_dt.strftime('%d/%m/%Y') }}</strong>
+      {% elif data_fim_dt %}
+        até <strong>{{ data_fim_dt.strftime('%d/%m/%Y') }}</strong>
+      {% endif %}
+    </span>
+    <a href="{{ request.path }}" class="ml-auto text-xs text-choco-600 hover:text-choco-900 font-semibold shrink-0">
+      Ver tudo →
+    </a>
+  </div>
+  {% endif %}
+
+</div>
+
+<script>
+function filtroRapido(periodo) {
+  const hoje = new Date();
+  // Evita problema de fuso — usa data local, não UTC
+  const fmt = d => [
+    d.getFullYear(),
+    String(d.getMonth() + 1).padStart(2, '0'),
+    String(d.getDate()).padStart(2, '0')
+  ].join('-');
+
+  let inicio;
+  const fim = fmt(hoje);
+
+  if (periodo === 'hoje') {
+    inicio = fmt(hoje);
+  } else if (periodo === 'semana') {
+    const d = new Date(hoje);
+    d.setDate(d.getDate() - 6);
+    inicio = fmt(d);
+  } else if (periodo === 'mes') {
+    inicio = fmt(new Date(hoje.getFullYear(), hoje.getMonth(), 1));
+  }
+
+  document.getElementById('filtro-inicio').value = inicio;
+  document.getElementById('filtro-fim').value = fim;
+  document.getElementById('filtro-form').submit();
+}
+</script>

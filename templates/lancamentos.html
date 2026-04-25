@@ -1,0 +1,332 @@
+{% extends "base.html" %}
+{% block title %}Lançamentos{% endblock %}
+{% block page_title %}Lançamentos{% endblock %}
+
+{% block content %}
+<div class="space-y-5">
+
+  <div class="hidden md:block">
+    <h2 class="text-2xl font-bold text-stone-800">Lançamentos</h2>
+    <p class="text-stone-500 text-sm mt-0.5">Registre produções, vendas e consumos</p>
+  </div>
+
+  <!-- Estoque rápido -->
+  {% set tem_estoque = stats.stats_produtos | selectattr('estoque', 'gt', 0) | list %}
+  {% if tem_estoque %}
+  <div class="bg-choco-50 border border-choco-200 rounded-2xl p-4 flex flex-wrap gap-3 items-center">
+    <span class="text-sm font-semibold text-choco-800">📦 Estoque atual:</span>
+    {% for sp in stats.stats_produtos %}
+      {% if sp.estoque > 0 %}
+      <span class="bg-white border border-choco-200 text-choco-700 text-sm px-3 py-1 rounded-full font-medium">
+        {{ sp.produto.nome }}: <strong>{{ sp.estoque }}</strong>
+      </span>
+      {% endif %}
+    {% endfor %}
+  </div>
+  {% endif %}
+
+  <!-- ── Tabs ──────────────────────────────────────────────────────── -->
+  <div class="bg-white rounded-2xl shadow-sm border border-amber-100 overflow-hidden">
+
+    <div class="flex border-b border-amber-100" role="tablist">
+      <button onclick="showTab('lote')" id="tab-lote"
+        class="flex-1 py-3.5 text-sm font-semibold text-choco-700 border-b-2 border-choco-600 bg-choco-50 transition-all">
+        📦 Produção
+      </button>
+      <button onclick="showTab('venda')" id="tab-venda"
+        class="flex-1 py-3.5 text-sm font-medium text-stone-500 border-b-2 border-transparent hover:text-choco-700 hover:bg-choco-50/50 transition-all">
+        🛍️ Venda
+      </button>
+      <button onclick="showTab('comido')" id="tab-comido"
+        class="flex-1 py-3.5 text-sm font-medium text-stone-500 border-b-2 border-transparent hover:text-choco-700 hover:bg-choco-50/50 transition-all">
+        😋 Comido
+      </button>
+    </div>
+
+    <!-- ── Produção ── -->
+    <div id="form-lote" class="p-5">
+      <p class="text-xs text-stone-400 mb-4">Registre um novo lote de brownies produzidos.</p>
+      <form method="POST" action="/lancamentos/lote" class="space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-stone-600 mb-1.5">Produto <span class="text-red-400">*</span></label>
+            <select name="produto_id" required class="field-input">
+              {% for p in produtos %}
+              <option value="{{ p.id }}">{{ p.nome }}{% if p.custo > 0 %} — custo R$ {{ "%.2f"|format(p.custo) }}{% endif %}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-stone-600 mb-1.5">Quantidade <span class="text-red-400">*</span></label>
+            <input type="number" name="quantidade" required min="1" placeholder="0" class="field-input" inputmode="numeric">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-stone-600 mb-1.5">Data</label>
+            <input type="date" name="data" value="{{ today }}" class="field-input">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-stone-600 mb-1.5">Observação</label>
+            <input type="text" name="observacao" placeholder="Opcional..." class="field-input">
+          </div>
+        </div>
+        <button type="submit" class="w-full bg-choco-600 hover:bg-choco-700 active:scale-[0.99] text-white py-3.5 rounded-xl font-semibold transition-all text-sm shadow-sm">
+          📦 Registrar Produção
+        </button>
+      </form>
+    </div>
+
+    <!-- ── Venda ── -->
+    <div id="form-venda" class="p-5 hidden">
+      <p class="text-xs text-stone-400 mb-4">Registre uma venda — selecione o local para usar o preço correto.</p>
+      <form method="POST" action="/lancamentos/transacao" class="space-y-4">
+        <input type="hidden" name="tipo" value="venda">
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+
+          <div>
+            <label class="block text-sm font-medium text-stone-600 mb-1.5">Vendedora <span class="text-red-400">*</span></label>
+            <select name="vendedora_id" required class="field-input">
+              {% for v in vendedoras %}
+              <option value="{{ v.id }}">{{ v.nome }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-stone-600 mb-1.5">Produto <span class="text-red-400">*</span></label>
+            <select name="produto_id" id="produto-venda" required class="field-input"
+              onchange="atualizarPreview()">
+              {% for p in produtos %}
+              <option value="{{ p.id }}"
+                data-escola="{{ p.preco_escola }}"
+                data-empresa="{{ p.preco_empresa }}">{{ p.nome }}</option>
+              {% endfor %}
+            </select>
+          </div>
+
+          <!-- Local de venda — campo destaque -->
+          <div class="md:col-span-2">
+            <label class="block text-sm font-medium text-stone-600 mb-2">Local de Venda <span class="text-red-400">*</span></label>
+            <div class="grid grid-cols-2 gap-3" id="local-selector">
+
+              <label id="label-escola"
+                class="flex items-center gap-3 p-4 rounded-xl border-2 border-blue-200 bg-blue-50 cursor-pointer transition-all hover:border-blue-400 local-option selected-local">
+                <input type="radio" name="local" value="escola" required class="sr-only" onchange="atualizarPreview()">
+                <div class="w-10 h-10 rounded-full bg-blue-200 flex items-center justify-center text-xl shrink-0">🏫</div>
+                <div class="flex-1">
+                  <p class="font-semibold text-blue-800 text-sm">Escola</p>
+                  <p class="text-xs text-blue-600 mt-0.5" id="preco-escola-label">R$ —</p>
+                </div>
+                <div class="w-5 h-5 rounded-full border-2 border-blue-400 flex items-center justify-center shrink-0" id="radio-escola">
+                  <div class="w-2.5 h-2.5 rounded-full bg-blue-500 hidden" id="dot-escola"></div>
+                </div>
+              </label>
+
+              <label id="label-empresa"
+                class="flex items-center gap-3 p-4 rounded-xl border-2 border-stone-200 bg-stone-50 cursor-pointer transition-all hover:border-purple-400 local-option">
+                <input type="radio" name="local" value="empresa" class="sr-only" onchange="atualizarPreview()">
+                <div class="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center text-xl shrink-0">🏢</div>
+                <div class="flex-1">
+                  <p class="font-semibold text-purple-800 text-sm">Empresa</p>
+                  <p class="text-xs text-purple-600 mt-0.5" id="preco-empresa-label">R$ —</p>
+                </div>
+                <div class="w-5 h-5 rounded-full border-2 border-stone-300 flex items-center justify-center shrink-0" id="radio-empresa">
+                  <div class="w-2.5 h-2.5 rounded-full bg-purple-500 hidden" id="dot-empresa"></div>
+                </div>
+              </label>
+
+            </div>
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-stone-600 mb-1.5">Quantidade <span class="text-red-400">*</span></label>
+            <input type="number" name="quantidade" id="qtd-venda" required min="1" placeholder="0"
+              class="field-input" inputmode="numeric" oninput="atualizarPreview()">
+          </div>
+
+          <div>
+            <label class="block text-sm font-medium text-stone-600 mb-1.5">Data</label>
+            <input type="date" name="data" value="{{ today }}" class="field-input">
+          </div>
+
+          <div class="md:col-span-2">
+            <label class="block text-sm font-medium text-stone-600 mb-1.5">Observação</label>
+            <input type="text" name="observacao" placeholder="Opcional..." class="field-input">
+          </div>
+
+        </div>
+
+        <!-- Total preview -->
+        <div id="total-preview" class="hidden bg-green-50 border border-green-200 rounded-xl p-4 flex items-center gap-4">
+          <div class="flex-1">
+            <p class="text-xs text-green-600 font-medium">Total desta venda</p>
+            <p class="text-3xl font-bold text-green-700 mt-0.5" id="total-value">R$ 0,00</p>
+          </div>
+          <div class="text-right text-xs text-green-600">
+            <p id="preview-qtd"></p>
+            <p id="preview-local"></p>
+          </div>
+        </div>
+
+        <button type="submit" class="w-full bg-green-600 hover:bg-green-700 active:scale-[0.99] text-white py-3.5 rounded-xl font-semibold transition-all text-sm shadow-sm">
+          🛍️ Registrar Venda
+        </button>
+      </form>
+    </div>
+
+    <!-- ── Comido ── -->
+    <div id="form-comido" class="p-5 hidden">
+      <p class="text-xs text-stone-400 mb-4">Registre brownies que foram consumidos pelas vendedoras.</p>
+      <form method="POST" action="/lancamentos/transacao" class="space-y-4">
+        <input type="hidden" name="tipo" value="comido">
+
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label class="block text-sm font-medium text-stone-600 mb-1.5">Quem comeu? <span class="text-red-400">*</span></label>
+            <select name="vendedora_id" required class="field-input">
+              {% for v in vendedoras %}
+              <option value="{{ v.id }}">{{ v.nome }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-stone-600 mb-1.5">Produto <span class="text-red-400">*</span></label>
+            <select name="produto_id" required class="field-input">
+              {% for p in produtos %}
+              <option value="{{ p.id }}">{{ p.nome }}</option>
+              {% endfor %}
+            </select>
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-stone-600 mb-1.5">Quantidade <span class="text-red-400">*</span></label>
+            <input type="number" name="quantidade" required min="1" placeholder="0" class="field-input" inputmode="numeric">
+          </div>
+          <div>
+            <label class="block text-sm font-medium text-stone-600 mb-1.5">Data</label>
+            <input type="date" name="data" value="{{ today }}" class="field-input">
+          </div>
+        </div>
+
+        <button type="submit" class="w-full bg-amber-500 hover:bg-amber-600 active:scale-[0.99] text-white py-3.5 rounded-xl font-semibold transition-all text-sm shadow-sm">
+          😋 Registrar Consumo
+        </button>
+      </form>
+    </div>
+
+  </div>
+
+  <!-- Aviso sem preços -->
+  {% set sem_preco = stats.stats_produtos | selectattr('produto.preco_escola', 'eq', 0) | list %}
+  {% if sem_preco %}
+  <div class="bg-amber-50 border border-amber-200 rounded-2xl p-4 flex items-start gap-3">
+    <span class="text-xl mt-0.5">💡</span>
+    <div>
+      <p class="text-sm font-semibold text-amber-800">Configure os preços por local</p>
+      <p class="text-xs text-amber-600 mt-0.5">Alguns produtos ainda não têm preços definidos para escola e/ou empresa.</p>
+      <a href="/configuracoes" class="mt-1.5 inline-block text-xs font-semibold text-amber-700 underline">Ir para Configurações →</a>
+    </div>
+  </div>
+  {% endif %}
+
+</div>
+{% endblock %}
+
+{% block scripts %}
+<style>
+  .field-input {
+    width: 100%;
+    padding: 12px 16px;
+    border-radius: 12px;
+    border: 1px solid #e7e5e3;
+    color: #44403c;
+    background: white;
+    font-size: 14px;
+    transition: all 0.15s;
+    outline: none;
+  }
+  .field-input:focus { border-color: transparent; box-shadow: 0 0 0 2px #df8b3a; }
+  select.field-input {
+    appearance: none;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+    background-repeat: no-repeat;
+    background-position: right 12px center;
+    padding-right: 40px;
+  }
+  .local-option.selected-local { border-color: #3b82f6 !important; background-color: #eff6ff !important; }
+  #label-empresa.selected-local { border-color: #a855f7 !important; background-color: #faf5ff !important; }
+</style>
+
+<script>
+  const ACTIVE  = 'flex-1 py-3.5 text-sm transition-all font-semibold text-choco-700 border-b-2 border-choco-600 bg-choco-50';
+  const IDLE    = 'flex-1 py-3.5 text-sm transition-all font-medium text-stone-500 border-b-2 border-transparent hover:text-choco-700 hover:bg-choco-50/50';
+
+  function showTab(name) {
+    ['lote', 'venda', 'comido'].forEach(t => {
+      document.getElementById('form-' + t).classList.add('hidden');
+      document.getElementById('tab-' + t).className = IDLE;
+    });
+    document.getElementById('form-' + name).classList.remove('hidden');
+    document.getElementById('tab-' + name).className = ACTIVE;
+    if (name === 'venda') atualizarPreview();
+  }
+
+  function getPrecos() {
+    const sel = document.getElementById('produto-venda');
+    const opt = sel.options[sel.selectedIndex];
+    return {
+      escola:  parseFloat(opt?.dataset.escola  || 0),
+      empresa: parseFloat(opt?.dataset.empresa || 0),
+    };
+  }
+
+  function atualizarPreview() {
+    const precos = getPrecos();
+
+    // Atualiza labels de preço nos cards de local
+    document.getElementById('preco-escola-label').textContent =
+      precos.escola > 0 ? 'R$ ' + precos.escola.toFixed(2).replace('.', ',') : 'Não definido';
+    document.getElementById('preco-empresa-label').textContent =
+      precos.empresa > 0 ? 'R$ ' + precos.empresa.toFixed(2).replace('.', ',') : 'Não definido';
+
+    // Visual dos radio cards
+    const escolaInput   = document.querySelector('input[name="local"][value="escola"]');
+    const empresaInput  = document.querySelector('input[name="local"][value="empresa"]');
+    const escolaSel     = escolaInput?.checked;
+    const empresaSel    = empresaInput?.checked;
+
+    document.getElementById('label-escola').classList.toggle('selected-local', !!escolaSel);
+    document.getElementById('label-empresa').classList.toggle('selected-local', !!empresaSel);
+    document.getElementById('dot-escola').classList.toggle('hidden', !escolaSel);
+    document.getElementById('dot-empresa').classList.toggle('hidden', !empresaSel);
+    document.getElementById('radio-escola').classList.toggle('border-blue-400', !!escolaSel);
+    document.getElementById('radio-empresa').classList.toggle('border-purple-400', !!empresaSel);
+
+    // Preview do total
+    const qtd = parseFloat(document.getElementById('qtd-venda')?.value) || 0;
+    const preco = escolaSel ? precos.escola : (empresaSel ? precos.empresa : 0);
+    const total = qtd * preco;
+    const preview = document.getElementById('total-preview');
+
+    if (qtd > 0 && preco > 0) {
+      preview.classList.remove('hidden');
+      document.getElementById('total-value').textContent = 'R$ ' + total.toFixed(2).replace('.', ',');
+      document.getElementById('preview-qtd').textContent = qtd + ' × R$ ' + preco.toFixed(2).replace('.', ',');
+      document.getElementById('preview-local').textContent = escolaSel ? '🏫 Escola' : '🏢 Empresa';
+    } else {
+      preview.classList.add('hidden');
+    }
+  }
+
+  // Escuta mudanças nos radio buttons de local
+  document.addEventListener('change', function(e) {
+    if (e.target.name === 'local') atualizarPreview();
+  });
+
+  // Inicializa labels ao carregar
+  document.addEventListener('DOMContentLoaded', function() {
+    // Marca escola como padrão visualmente
+    const escolaInput = document.querySelector('input[name="local"][value="escola"]');
+    if (escolaInput) { escolaInput.checked = true; atualizarPreview(); }
+  });
+</script>
+{% endblock %}

@@ -1,0 +1,217 @@
+{% extends "base.html" %}
+{% block title %}Configurações{% endblock %}
+{% block page_title %}Configurações{% endblock %}
+
+{% block content %}
+<div class="space-y-5">
+
+  <div class="hidden md:block">
+    <h2 class="text-2xl font-bold text-stone-800">Configurações</h2>
+    <p class="text-stone-500 text-sm mt-0.5">Defina preços, comissões e custo de produção por produto</p>
+  </div>
+
+  <!-- ── Preços e Custos ────────────────────────────────────────────── -->
+  <div class="bg-white rounded-2xl p-5 shadow-sm border border-amber-100">
+    <h3 class="font-semibold text-stone-700 mb-5 flex items-center gap-2">💰 Preços e Custos por Produto</h3>
+
+    <form method="POST" action="/configuracoes" class="space-y-6">
+      {% for p in produtos %}
+      <div class="border border-amber-100 rounded-xl overflow-hidden">
+
+        <!-- Product header -->
+        <div class="bg-choco-50 px-4 py-3 flex items-center gap-2 border-b border-amber-100">
+          <span class="text-xl">🍫</span>
+          <h4 class="font-semibold text-choco-900">{{ p.nome }}</h4>
+        </div>
+
+        <div class="p-4 space-y-4">
+
+          <!-- Preços por local -->
+          <div>
+            <p class="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-2.5">Preço de Venda</p>
+            <div class="grid grid-cols-2 gap-3">
+
+              <!-- Escola -->
+              <div class="bg-blue-50 rounded-xl p-3 border border-blue-100">
+                <label class="flex items-center gap-1.5 text-xs font-semibold text-blue-700 mb-2">
+                  🏫 Escola
+                </label>
+                <div class="relative">
+                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 text-sm font-medium pointer-events-none">R$</span>
+                  <input type="number" name="preco_escola_{{ p.id }}" value="{{ '%.2f'|format(p.preco_escola) }}"
+                    step="0.01" min="0" placeholder="0,00" inputmode="decimal"
+                    class="w-full pl-9 pr-3 py-2.5 rounded-lg border border-blue-200 text-stone-700 text-sm
+                           focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent bg-white transition-all">
+                </div>
+              </div>
+
+              <!-- Empresa -->
+              <div class="bg-purple-50 rounded-xl p-3 border border-purple-100">
+                <label class="flex items-center gap-1.5 text-xs font-semibold text-purple-700 mb-2">
+                  🏢 Empresa
+                </label>
+                <div class="relative">
+                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 text-sm font-medium pointer-events-none">R$</span>
+                  <input type="number" name="preco_empresa_{{ p.id }}" value="{{ '%.2f'|format(p.preco_empresa) }}"
+                    step="0.01" min="0" placeholder="0,00" inputmode="decimal"
+                    class="w-full pl-9 pr-3 py-2.5 rounded-lg border border-purple-200 text-stone-700 text-sm
+                           focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent bg-white transition-all">
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Comissões -->
+          <div>
+            <p class="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-2.5">Comissão por Venda</p>
+            <div class="grid grid-cols-2 gap-3">
+              <div class="bg-blue-50 rounded-xl p-3 border border-blue-100">
+                <label class="flex items-center gap-1.5 text-xs font-semibold text-blue-700 mb-2">🏫 Escola</label>
+                <div class="relative">
+                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 text-sm font-medium pointer-events-none">R$</span>
+                  <input type="number" name="comissao_escola_{{ p.id }}" value="{{ '%.2f'|format(p.comissao_escola) }}"
+                    step="0.01" min="0" placeholder="0,00" inputmode="decimal"
+                    class="w-full pl-9 pr-3 py-2.5 rounded-lg border border-blue-200 text-stone-700 text-sm
+                           focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent bg-white transition-all">
+                </div>
+              </div>
+              <div class="bg-purple-50 rounded-xl p-3 border border-purple-100">
+                <label class="flex items-center gap-1.5 text-xs font-semibold text-purple-700 mb-2">🏢 Empresa</label>
+                <div class="relative">
+                  <span class="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 text-sm font-medium pointer-events-none">R$</span>
+                  <input type="number" name="comissao_empresa_{{ p.id }}" value="{{ '%.2f'|format(p.comissao_empresa) }}"
+                    step="0.01" min="0" placeholder="0,00" inputmode="decimal"
+                    class="w-full pl-9 pr-3 py-2.5 rounded-lg border border-purple-200 text-stone-700 text-sm
+                           focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent bg-white transition-all">
+                </div>
+                {% if p.comissao_empresa > 0 %}
+                <p class="text-[10px] text-purple-400 mt-1.5">÷3 = R$ {{ '%.2f'|format(p.comissao_empresa / 3) }} por pessoa</p>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+
+          <!-- Custo -->
+          <div>
+            <p class="text-xs font-semibold text-stone-500 uppercase tracking-wide mb-2.5">Custo de Produção</p>
+            <div class="relative max-w-xs">
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 text-sm font-medium pointer-events-none">R$</span>
+              <input type="number" name="custo_{{ p.id }}" value="{{ '%.2f'|format(p.custo) }}"
+                step="0.01" min="0" placeholder="0,00" inputmode="decimal"
+                class="w-full pl-9 pr-3 py-2.5 rounded-xl border border-stone-200 text-stone-700 text-sm
+                       focus:outline-none focus:ring-2 focus:ring-choco-400 focus:border-transparent bg-white transition-all">
+            </div>
+          </div>
+
+          <!-- Margens calculadas -->
+          {% if p.custo > 0 and (p.preco_escola > 0 or p.preco_empresa > 0) %}
+          <div class="grid grid-cols-2 gap-3">
+            {% if p.preco_escola > 0 %}
+            {% set margem_e = p.preco_escola - p.custo %}
+            {% set pct_e = (margem_e / p.preco_escola * 100) %}
+            <div class="bg-stone-50 rounded-xl p-3 text-center border border-stone-100">
+              <p class="text-[10px] text-stone-400 font-medium uppercase tracking-wide mb-1">🏫 Margem Escola</p>
+              <p class="font-bold text-base {% if margem_e > 0 %}text-green-600{% else %}text-red-600{% endif %}">
+                R$ {{ "%.2f"|format(margem_e) }}
+              </p>
+              <p class="text-xs {% if pct_e > 0 %}text-green-500{% else %}text-red-500{% endif %}">{{ "%.1f"|format(pct_e) }}%</p>
+            </div>
+            {% endif %}
+            {% if p.preco_empresa > 0 %}
+            {% set margem_p = p.preco_empresa - p.custo %}
+            {% set pct_p = (margem_p / p.preco_empresa * 100) %}
+            <div class="bg-stone-50 rounded-xl p-3 text-center border border-stone-100">
+              <p class="text-[10px] text-stone-400 font-medium uppercase tracking-wide mb-1">🏢 Margem Empresa</p>
+              <p class="font-bold text-base {% if margem_p > 0 %}text-green-600{% else %}text-red-600{% endif %}">
+                R$ {{ "%.2f"|format(margem_p) }}
+              </p>
+              <p class="text-xs {% if pct_p > 0 %}text-green-500{% else %}text-red-500{% endif %}">{{ "%.1f"|format(pct_p) }}%</p>
+            </div>
+            {% endif %}
+          </div>
+          {% else %}
+          <p class="text-xs text-amber-600 flex items-center gap-1.5">
+            ⚠️ Preencha os preços e o custo para ver as margens de lucro
+          </p>
+          {% endif %}
+
+        </div>
+      </div>
+      {% endfor %}
+
+      <button type="submit"
+        class="w-full bg-choco-600 hover:bg-choco-700 active:scale-[0.99] text-white py-3.5 rounded-xl font-semibold transition-all text-sm shadow-sm">
+        💾 Salvar Configurações
+      </button>
+    </form>
+  </div>
+
+  <!-- ── Vendedoras ─────────────────────────────────────────────────── -->
+  <div class="bg-white rounded-2xl p-5 shadow-sm border border-amber-100">
+    <h3 class="font-semibold text-stone-700 mb-1 flex items-center gap-2">👥 Vendedoras</h3>
+    <p class="text-xs text-stone-400 mb-4">Defina comissões individuais ou deixe em branco para usar o valor padrão do produto.</p>
+
+    <form method="POST" action="/configuracoes/vendedoras" class="space-y-3">
+      {% for v in vendedoras %}
+      <div class="border border-amber-100 rounded-xl overflow-hidden">
+
+        <!-- Cabeçalho -->
+        <div class="bg-choco-50 px-4 py-2.5 flex items-center gap-3 border-b border-amber-100">
+          <div class="w-8 h-8 rounded-full bg-choco-200 flex items-center justify-center text-choco-800 font-bold text-sm shrink-0">
+            {{ v.nome[0] }}
+          </div>
+          <span class="font-semibold text-stone-700 text-sm flex-1">{{ v.nome }}</span>
+          <!-- Toggle comissão -->
+          <form method="POST" action="/vendedora/{{ v.id }}/toggle_comissao" class="inline">
+            <button type="submit" title="Alternar comissão"
+              class="text-xs px-2.5 py-1 rounded-lg font-semibold transition-colors
+                     {% if v.tem_comissao %}bg-green-100 text-green-700 hover:bg-green-200{% else %}bg-red-100 text-red-600 hover:bg-red-200{% endif %}">
+              {% if v.tem_comissao %}✓ com comissão{% else %}✗ sem comissão{% endif %}
+            </button>
+          </form>
+        </div>
+
+        <!-- Campos de comissão -->
+        {% if v.tem_comissao %}
+        <div class="p-3 grid grid-cols-2 gap-3">
+          <div class="bg-blue-50 rounded-xl p-3 border border-blue-100">
+            <label class="flex items-center gap-1 text-xs font-semibold text-blue-700 mb-2">🏫 Comissão Escola</label>
+            <div class="relative">
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 text-sm font-medium pointer-events-none">R$</span>
+              <input type="number" name="comissao_escola_{{ v.id }}"
+                value="{{ '%.2f'|format(v.comissao_escola) if v.comissao_escola is not none else '' }}"
+                step="0.01" min="0" inputmode="decimal"
+                placeholder="padrão produto"
+                class="w-full pl-9 pr-3 py-2 rounded-lg border border-blue-200 text-stone-700 text-sm
+                       focus:outline-none focus:ring-2 focus:ring-blue-400 focus:border-transparent bg-white transition-all placeholder:text-stone-300">
+            </div>
+          </div>
+          <div class="bg-purple-50 rounded-xl p-3 border border-purple-100">
+            <label class="flex items-center gap-1 text-xs font-semibold text-purple-700 mb-2">🏢 Comissão Empresa</label>
+            <div class="relative">
+              <span class="absolute left-3 top-1/2 -translate-y-1/2 text-stone-400 text-sm font-medium pointer-events-none">R$</span>
+              <input type="number" name="comissao_empresa_{{ v.id }}"
+                value="{{ '%.2f'|format(v.comissao_empresa) if v.comissao_empresa is not none else '' }}"
+                step="0.01" min="0" inputmode="decimal"
+                placeholder="padrão produto"
+                class="w-full pl-9 pr-3 py-2 rounded-lg border border-purple-200 text-stone-700 text-sm
+                       focus:outline-none focus:ring-2 focus:ring-purple-400 focus:border-transparent bg-white transition-all placeholder:text-stone-300">
+            </div>
+          </div>
+        </div>
+        {% else %}
+        <p class="px-4 py-3 text-xs text-stone-400 italic">Sem comissão — campos desabilitados.</p>
+        {% endif %}
+
+      </div>
+      {% endfor %}
+
+      <button type="submit"
+        class="w-full bg-choco-600 hover:bg-choco-700 active:scale-[0.99] text-white py-3 rounded-xl font-semibold transition-all text-sm shadow-sm mt-2">
+        💾 Salvar Comissões das Vendedoras
+      </button>
+    </form>
+  </div>
+
+</div>
+{% endblock %}
