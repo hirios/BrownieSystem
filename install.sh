@@ -142,3 +142,13 @@ if [[ "${REPLY}" =~ ^[Ss]$ ]]; then
     systemctl start "${APP_NAME}"
     sleep 2
     if systemctl is-active --quiet "${APP_NAME}"; then
+        ok "Serviço iniciado com sucesso!"
+        echo -e "\n  Acesse: ${CYAN}http://localhost:${PORT}${NC}\n"
+    else
+        err "Serviço falhou ao iniciar. Verifique com:  journalctl -u ${APP_NAME} -n 50"
+    fi
+else
+    echo ""
+    info "Serviço não iniciado. Para iniciar manualmente:"
+    echo -e "    ${CYAN}sudo systemctl start ${APP_NAME}${NC}\n"
+fi
