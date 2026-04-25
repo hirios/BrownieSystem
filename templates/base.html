@@ -56,6 +56,10 @@
         {% if request.endpoint == 'historico' %}bg-choco-100 text-choco-800 font-semibold{% else %}font-medium text-stone-600 hover:bg-choco-50 hover:text-choco-800{% endif %}">
         <span class="text-xl w-6 text-center">📋</span> Histórico
       </a>
+      <a href="/calendario" class="flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-150 text-sm
+        {% if request.endpoint == 'calendario' %}bg-choco-100 text-choco-800 font-semibold{% else %}font-medium text-stone-600 hover:bg-choco-50 hover:text-choco-800{% endif %}">
+        <span class="text-xl w-6 text-center">📅</span> Calendário
+      </a>
       <a href="/configuracoes" class="flex items-center gap-3 px-4 py-2.5 rounded-xl transition-all duration-150 text-sm
         {% if request.endpoint == 'configuracoes' %}bg-choco-100 text-choco-800 font-semibold{% else %}font-medium text-stone-600 hover:bg-choco-50 hover:text-choco-800{% endif %}">
         <span class="text-xl w-6 text-center">⚙️</span> Configurações
@@ -74,7 +78,7 @@
 
   <!-- ── Main Content ───────────────────────────────────────────────── -->
   <main class="md:ml-60 pt-14 md:pt-0 pb-20 md:pb-8">
-    <div class="p-4 md:p-8 max-w-5xl mx-auto">
+    <div class="{% block container_class %}p-4 md:p-8 max-w-5xl mx-auto{% endblock %}">
 
       <!-- Flash messages -->
       {% with messages = get_flashed_messages(with_categories=true) %}
@@ -98,6 +102,7 @@
     <a href="/"             class="flex-1 flex flex-col items-center gap-0.5 py-2 text-[11px] font-medium {% if request.endpoint == 'dashboard'     %}text-choco-700{% else %}text-stone-400{% endif %}"><span class="text-xl">📊</span>Dashboard</a>
     <a href="/lancamentos"  class="flex-1 flex flex-col items-center gap-0.5 py-2 text-[11px] font-medium {% if request.endpoint == 'lancamentos'   %}text-choco-700{% else %}text-stone-400{% endif %}"><span class="text-xl">➕</span>Lançar</a>
     <a href="/historico"    class="flex-1 flex flex-col items-center gap-0.5 py-2 text-[11px] font-medium {% if request.endpoint == 'historico'     %}text-choco-700{% else %}text-stone-400{% endif %}"><span class="text-xl">📋</span>Histórico</a>
+    <a href="/calendario"    class="flex-1 flex flex-col items-center gap-0.5 py-2 text-[11px] font-medium {% if request.endpoint == 'calendario'    %}text-choco-700{% else %}text-stone-400{% endif %}"><span class="text-xl">📅</span>Agenda</a>
     <a href="/configuracoes" class="flex-1 flex flex-col items-center gap-0.5 py-2 text-[11px] font-medium {% if request.endpoint == 'configuracoes' %}text-choco-700{% else %}text-stone-400{% endif %}"><span class="text-xl">⚙️</span>Config</a>
   </nav>
 

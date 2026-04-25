@@ -1,7 +1,7 @@
 from flask import Flask, render_template, request, redirect, url_for, flash
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import text, inspect
-from datetime import datetime, date
+from datetime import datetime, date, timedelta
 
 app = Flask(__name__)
 app.config['SECRET_KEY'] = 'brownie-key-2024'
@@ -38,6 +38,17 @@ class Lote(db.Model):
     observacao = db.Column(db.String(200))
     criado_em = db.Column(db.DateTime, default=datetime.utcnow)
     produto = db.relationship('Produto', backref='lotes')
+
+
+class Atividade(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    titulo = db.Column(db.String(200), nullable=False)
+    descricao = db.Column(db.String(500))
+    data = db.Column(db.Date, nullable=False)
+    hora_inicio = db.Column(db.String(5))
+    hora_fim = db.Column(db.String(5))
+    cor = db.Column(db.String(20), default='choco')
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow)
 
 
 class Transacao(db.Model):
@@ -123,7 +134,7 @@ def _parse_datas(ini_str, fim_str):
     return ini, fim
 
 
-def calcular_stats(data_inicio=None, data_fim=None):
+def calcular_stats(data_inicio=None, data_fim=None, vendedora_id=None):
     """
     Calcula estatísticas respeitando o filtro de data.
     Usa queries pré-filtradas em vez dos relacionamentos ORM para garantir
@@ -141,6 +152,8 @@ def calcular_stats(data_inicio=None, data_fim=None):
     if data_fim:
         lotes_q = lotes_q.filter(Lote.data <= data_fim)
         trans_q = trans_q.filter(Transacao.data <= data_fim)
+    if vendedora_id:
+        trans_q = trans_q.filter(Transacao.vendedora_id == vendedora_id)
 
     lotes_list = lotes_q.all()
     trans_list = trans_q.all()
@@ -163,6 +176,7 @@ def calcular_stats(data_inicio=None, data_fim=None):
 
     stats_produtos = []
     total_custo = 0.0
+    total_custo_vendas = 0.0
     total_receita_real = 0.0
     total_lucro_esp_escola = 0.0
     total_lucro_esp_empresa = 0.0
@@ -186,8 +200,9 @@ def calcular_stats(data_inicio=None, data_fim=None):
         estoque = lotes_qtd - vendas_qtd - comido_qtd
 
         custo = lotes_qtd * p.custo
+        custo_vendas = vendas_qtd * p.custo
         receita_real = sum(t.quantidade * (t.preco_unitario or 0) for t in vendas)
-        lucro_real = receita_real - custo
+        lucro_real = receita_real - custo_vendas
 
         lucro_esp_escola = lotes_qtd * p.preco_escola - custo
         lucro_esp_empresa = lotes_qtd * p.preco_empresa - custo
@@ -196,9 +211,10 @@ def calcular_stats(data_inicio=None, data_fim=None):
         vendas_empresa_qtd = sum(t.quantidade for t in vendas if t.local == 'empresa')
         receita_escola = sum(t.quantidade * (t.preco_unitario or 0) for t in vendas if t.local == 'escola')
         receita_empresa = sum(t.quantidade * (t.preco_unitario or 0) for t in vendas if t.local == 'empresa')
-        # Lucro bruto por canal: receita do canal − custo das unidades vendidas naquele canal
-        lucro_real_escola = receita_escola - vendas_escola_qtd * p.custo
-        lucro_real_empresa = receita_empresa - vendas_empresa_qtd * p.custo
+        custo_escola = vendas_escola_qtd * p.custo
+        custo_empresa = vendas_empresa_qtd * p.custo
+        lucro_real_escola = receita_escola - custo_escola
+        lucro_real_empresa = receita_empresa - custo_empresa
 
         # Comissões pagas: exclui vendedoras sem comissão; usa taxa individual se definida
         comissao_paga_escola = 0.0
@@ -250,6 +266,7 @@ def calcular_stats(data_inicio=None, data_fim=None):
         })
 
         total_custo += custo
+        total_custo_vendas += custo_vendas
         total_receita_real += receita_real
         total_lucro_esp_escola += lucro_esp_escola
         total_lucro_esp_empresa += lucro_esp_empresa
@@ -260,8 +277,9 @@ def calcular_stats(data_inicio=None, data_fim=None):
         total_vendido += vendas_qtd
         total_comido += comido_qtd
 
+    vendedoras_stats = [v for v in vendedoras if v.id == vendedora_id] if vendedora_id else vendedoras
     stats_vendedoras = []
-    for v in vendedoras:
+    for v in vendedoras_stats:
         trans_v = trans_por_vend.get(v.id, [])
         vendas = [t for t in trans_v if t.tipo == 'venda']
         comidos = [t for t in trans_v if t.tipo == 'comido']
@@ -283,11 +301,19 @@ def calcular_stats(data_inicio=None, data_fim=None):
         comissao_total_individual = comissao_escola + comissao_empresa_individual
         comissao_total_bruto = comissao_escola + comissao_empresa_total
 
+        custo_vend = sum(t.quantidade * (produto_by_id[t.produto_id].custo if t.produto_id in produto_by_id else 0)
+                         for t in vendas)
+        lucro_bruto = receita - custo_vend
+        receita_liquida = receita - custo_vend - comissao_total_bruto
+
         stats_vendedoras.append({
             'vendedora': v,
             'total_vendas_qtd': sum(t.quantidade for t in vendas),
             'total_comidos_qtd': sum(t.quantidade for t in comidos),
+            'custo': custo_vend,
             'receita': receita,
+            'lucro_bruto': lucro_bruto,
+            'receita_liquida': receita_liquida,
             'comissao_escola': comissao_escola,
             'comissao_empresa_total': comissao_empresa_total,
             'comissao_empresa_individual': comissao_empresa_individual,
@@ -324,22 +350,28 @@ def dashboard():
     ini_str = request.args.get('data_inicio', '').strip()
     fim_str = request.args.get('data_fim', '').strip()
     data_inicio, data_fim = _parse_datas(ini_str, fim_str)
-    # Normaliza strings para valores reais parseados (limpa entradas inválidas)
     ini_str = data_inicio.isoformat() if data_inicio else ''
     fim_str = data_fim.isoformat() if data_fim else ''
 
-    stats = calcular_stats(data_inicio=data_inicio, data_fim=data_fim)
+    vid_str = request.args.get('vendedora_id', '').strip()
+    vendedora_id = int(vid_str) if vid_str.isdigit() else None
+
+    stats = calcular_stats(data_inicio=data_inicio, data_fim=data_fim, vendedora_id=vendedora_id)
 
     recentes_q = Transacao.query.order_by(Transacao.criado_em.desc())
     if data_inicio:
         recentes_q = recentes_q.filter(Transacao.data >= data_inicio)
     if data_fim:
         recentes_q = recentes_q.filter(Transacao.data <= data_fim)
+    if vendedora_id:
+        recentes_q = recentes_q.filter(Transacao.vendedora_id == vendedora_id)
     recentes = recentes_q.limit(10).all()
 
     return render_template('dashboard.html',
                            stats=stats,
                            recentes=recentes,
+                           vendedoras=Vendedora.query.filter_by(ativo=True).all(),
+                           vendedora_id=vendedora_id,
                            data_inicio=ini_str,
                            data_fim=fim_str,
                            data_inicio_dt=data_inicio,
@@ -436,6 +468,9 @@ def historico():
     ini_str = data_inicio.isoformat() if data_inicio else ''
     fim_str = data_fim.isoformat() if data_fim else ''
 
+    vid_str = request.args.get('vendedora_id', '').strip()
+    vendedora_id = int(vid_str) if vid_str.isdigit() else None
+
     lotes_q = Lote.query.order_by(Lote.criado_em.desc())
     transacoes_q = Transacao.query.order_by(Transacao.criado_em.desc())
     if data_inicio:
@@ -444,10 +479,14 @@ def historico():
     if data_fim:
         lotes_q = lotes_q.filter(Lote.data <= data_fim)
         transacoes_q = transacoes_q.filter(Transacao.data <= data_fim)
+    if vendedora_id:
+        transacoes_q = transacoes_q.filter(Transacao.vendedora_id == vendedora_id)
 
     return render_template('historico.html',
                            lotes=lotes_q.all(),
                            transacoes=transacoes_q.all(),
+                           vendedoras=Vendedora.query.filter_by(ativo=True).all(),
+                           vendedora_id=vendedora_id,
                            data_inicio=ini_str,
                            data_fim=fim_str,
                            data_inicio_dt=data_inicio,
@@ -498,6 +537,84 @@ def deletar_transacao(id):
     db.session.commit()
     flash('Registro removido.', 'success')
     return redirect(url_for('historico'))
+
+
+@app.route('/calendario')
+def calendario():
+    semana_str = request.args.get('semana', '').strip()
+    try:
+        semana_ref = date.fromisoformat(semana_str) if semana_str else date.today()
+    except ValueError:
+        semana_ref = date.today()
+
+    semana_inicio = semana_ref - timedelta(days=semana_ref.weekday())
+    semana_fim = semana_inicio + timedelta(days=6)
+    dias_semana = [semana_inicio + timedelta(days=i) for i in range(7)]
+
+    atividades = Atividade.query.filter(
+        Atividade.data >= semana_inicio,
+        Atividade.data <= semana_fim
+    ).order_by(Atividade.hora_inicio).all()
+
+    atividades_por_dia = {}
+    for a in atividades:
+        atividades_por_dia.setdefault(a.data, []).append(a)
+
+    hoje = date.today()
+    hoje_semana_idx = (hoje - semana_inicio).days if semana_inicio <= hoje <= semana_fim else -1
+
+    return render_template('calendario.html',
+                           dias_semana=dias_semana,
+                           semana_inicio=semana_inicio,
+                           semana_fim=semana_fim,
+                           atividades_por_dia=atividades_por_dia,
+                           semana_anterior=(semana_inicio - timedelta(weeks=1)).isoformat(),
+                           proxima_semana=(semana_inicio + timedelta(weeks=1)).isoformat(),
+                           hoje=hoje,
+                           hoje_semana_idx=hoje_semana_idx)
+
+
+@app.route('/calendario/atividade', methods=['POST'])
+def add_atividade():
+    titulo = request.form.get('titulo', '').strip()
+    descricao = request.form.get('descricao', '').strip()
+    data_str = request.form.get('data', '').strip()
+    hora_inicio = request.form.get('hora_inicio', '').strip()
+    hora_fim = request.form.get('hora_fim', '').strip()
+    cor = request.form.get('cor', 'choco')
+    semana = request.form.get('semana', '')
+
+    if not titulo or not data_str:
+        flash('Título e data são obrigatórios.', 'error')
+        return redirect(url_for('calendario', semana=semana))
+
+    try:
+        data = date.fromisoformat(data_str)
+    except ValueError:
+        flash('Data inválida.', 'error')
+        return redirect(url_for('calendario', semana=semana))
+
+    db.session.add(Atividade(
+        titulo=titulo,
+        descricao=descricao or None,
+        data=data,
+        hora_inicio=hora_inicio or None,
+        hora_fim=hora_fim or None,
+        cor=cor
+    ))
+    db.session.commit()
+    flash('Atividade adicionada!', 'success')
+    return redirect(url_for('calendario', semana=semana))
+
+
+@app.route('/calendario/atividade/<int:id>/deletar', methods=['POST'])
+def deletar_atividade(id):
+    a = Atividade.query.get_or_404(id)
+    semana = request.form.get('semana', '')
+    db.session.delete(a)
+    db.session.commit()
+    flash('Atividade removida.', 'success')
+    return redirect(url_for('calendario', semana=semana))
 
 
 if __name__ == '__main__':

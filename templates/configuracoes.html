@@ -151,6 +151,11 @@
     <h3 class="font-semibold text-stone-700 mb-1 flex items-center gap-2">👥 Vendedoras</h3>
     <p class="text-xs text-stone-400 mb-4">Defina comissões individuais ou deixe em branco para usar o valor padrão do produto.</p>
 
+    <!-- Forms de toggle fora do form principal para evitar aninhamento inválido -->
+    {% for v in vendedoras %}
+    <form id="toggle-form-{{ v.id }}" method="POST" action="/vendedora/{{ v.id }}/toggle_comissao"></form>
+    {% endfor %}
+
     <form method="POST" action="/configuracoes/vendedoras" class="space-y-3">
       {% for v in vendedoras %}
       <div class="border border-amber-100 rounded-xl overflow-hidden">
@@ -161,14 +166,12 @@
             {{ v.nome[0] }}
           </div>
           <span class="font-semibold text-stone-700 text-sm flex-1">{{ v.nome }}</span>
-          <!-- Toggle comissão -->
-          <form method="POST" action="/vendedora/{{ v.id }}/toggle_comissao" class="inline">
-            <button type="submit" title="Alternar comissão"
-              class="text-xs px-2.5 py-1 rounded-lg font-semibold transition-colors
-                     {% if v.tem_comissao %}bg-green-100 text-green-700 hover:bg-green-200{% else %}bg-red-100 text-red-600 hover:bg-red-200{% endif %}">
-              {% if v.tem_comissao %}✓ com comissão{% else %}✗ sem comissão{% endif %}
-            </button>
-          </form>
+          <!-- Toggle referencia o form externo via atributo form= -->
+          <button type="submit" form="toggle-form-{{ v.id }}" title="Alternar comissão"
+            class="text-xs px-2.5 py-1 rounded-lg font-semibold transition-colors
+                   {% if v.tem_comissao %}bg-green-100 text-green-700 hover:bg-green-200{% else %}bg-red-100 text-red-600 hover:bg-red-200{% endif %}">
+            {% if v.tem_comissao %}✓ com comissão{% else %}✗ sem comissão{% endif %}
+          </button>
         </div>
 
         <!-- Campos de comissão -->

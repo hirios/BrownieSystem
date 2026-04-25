@@ -20,9 +20,76 @@
   {% include '_filtro.html' %}
 
   <!-- ── Cards de Resumo ──────────────────────────────────────────── -->
-  <div class="grid grid-cols-2 lg:grid-cols-4 gap-3">
+  {% if vendedora_id and stats.stats_vendedoras %}
+  {% set sv = stats.stats_vendedoras[0] %}
 
-    <div class="bg-white rounded-2xl p-4 shadow-sm border border-amber-100 col-span-2 lg:col-span-1 flex items-center gap-4">
+  <!-- Visão individual da vendedora -->
+  <div class="grid grid-cols-1 lg:grid-cols-4 gap-3">
+
+    <div class="bg-white rounded-2xl p-4 shadow-sm border border-amber-100 flex items-center gap-4">
+      <div class="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center text-2xl shrink-0">💵</div>
+      <div>
+        <p class="text-xs text-stone-500 font-medium">Receita Bruta</p>
+        <p class="text-2xl font-bold text-blue-600 mt-0.5 leading-none">R$ {{ "%.2f"|format(sv.receita) }}</p>
+        <p class="text-xs text-stone-400 mt-1">vendas realizadas</p>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-2xl p-4 shadow-sm border border-amber-100 flex items-center gap-4">
+      <div class="w-12 h-12 rounded-xl bg-red-100 flex items-center justify-center text-2xl shrink-0">💸</div>
+      <div>
+        <p class="text-xs text-stone-500 font-medium">Custo das Vendas</p>
+        <p class="text-2xl font-bold text-red-600 mt-0.5 leading-none">R$ {{ "%.2f"|format(sv.custo) }}</p>
+        <p class="text-xs text-stone-400 mt-1">custo das unidades vendidas</p>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-2xl p-4 shadow-sm border border-amber-100 flex items-center gap-4">
+      <div class="w-12 h-12 rounded-xl {% if sv.lucro_bruto >= 0 %}bg-green-100{% else %}bg-red-100{% endif %} flex items-center justify-center text-2xl shrink-0">
+        {% if sv.lucro_bruto >= 0 %}📈{% else %}📉{% endif %}
+      </div>
+      <div>
+        <p class="text-xs text-stone-500 font-medium">Lucro Bruto</p>
+        <p class="text-2xl font-bold {% if sv.lucro_bruto >= 0 %}text-green-600{% else %}text-red-600{% endif %} mt-0.5 leading-none">
+          R$ {{ "%.2f"|format(sv.lucro_bruto) }}
+        </p>
+        <p class="text-xs text-stone-400 mt-0.5">receita − custo</p>
+      </div>
+    </div>
+
+    <div class="bg-white rounded-2xl p-4 shadow-sm border border-amber-100 flex items-center gap-4">
+      <div class="w-12 h-12 rounded-xl {% if sv.receita_liquida >= 0 %}bg-emerald-100{% else %}bg-red-100{% endif %} flex items-center justify-center text-2xl shrink-0">
+        {% if sv.receita_liquida >= 0 %}✅{% else %}⚠️{% endif %}
+      </div>
+      <div>
+        <p class="text-xs text-stone-500 font-medium">Receita Líquida</p>
+        <p class="text-2xl font-bold {% if sv.receita_liquida >= 0 %}text-emerald-600{% else %}text-red-600{% endif %} mt-0.5 leading-none">
+          R$ {{ "%.2f"|format(sv.receita_liquida) }}
+        </p>
+        <p class="text-xs text-stone-400 mt-0.5">receita − custo − comissão</p>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Unidades da vendedora -->
+  <div class="grid grid-cols-2 gap-3">
+    <div class="bg-white rounded-2xl p-4 shadow-sm border border-amber-100 text-center">
+      <p class="text-3xl font-bold text-green-600">{{ sv.total_vendas_qtd }}</p>
+      <p class="text-xs text-stone-500 mt-1 font-medium">🛍️ Vendidos</p>
+    </div>
+    <div class="bg-white rounded-2xl p-4 shadow-sm border border-amber-100 text-center">
+      <p class="text-3xl font-bold text-amber-500">{{ sv.total_comidos_qtd }}</p>
+      <p class="text-xs text-stone-500 mt-1 font-medium">😋 Comidos</p>
+    </div>
+  </div>
+
+  {% else %}
+
+  <!-- Visão geral -->
+  <div class="grid grid-cols-1 lg:grid-cols-4 gap-3">
+
+    <div class="bg-white rounded-2xl p-4 shadow-sm border border-amber-100 flex items-center gap-4">
       <div class="w-12 h-12 rounded-xl bg-red-100 flex items-center justify-center text-2xl shrink-0">💸</div>
       <div>
         <p class="text-xs text-stone-500 font-medium">Custo Total</p>
@@ -31,16 +98,16 @@
       </div>
     </div>
 
-    <div class="bg-white rounded-2xl p-4 shadow-sm border border-amber-100 col-span-2 lg:col-span-1 flex items-center gap-4">
+    <div class="bg-white rounded-2xl p-4 shadow-sm border border-amber-100 flex items-center gap-4">
       <div class="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center text-2xl shrink-0">💵</div>
       <div>
-        <p class="text-xs text-stone-500 font-medium">Receita Real</p>
+        <p class="text-xs text-stone-500 font-medium">Receita Bruta</p>
         <p class="text-2xl font-bold text-blue-600 mt-0.5 leading-none">R$ {{ "%.2f"|format(stats.total_receita_real) }}</p>
         <p class="text-xs text-stone-400 mt-1">vendas realizadas</p>
       </div>
     </div>
 
-    <div class="bg-white rounded-2xl p-4 shadow-sm border border-amber-100 col-span-2 lg:col-span-1 flex items-center gap-4">
+    <div class="bg-white rounded-2xl p-4 shadow-sm border border-amber-100 flex items-center gap-4">
       <div class="w-12 h-12 rounded-xl {% if stats.total_lucro_bruto >= 0 %}bg-green-100{% else %}bg-red-100{% endif %} flex items-center justify-center text-2xl shrink-0">
         {% if stats.total_lucro_bruto >= 0 %}📈{% else %}📉{% endif %}
       </div>
@@ -49,46 +116,20 @@
         <p class="text-2xl font-bold {% if stats.total_lucro_bruto >= 0 %}text-green-600{% else %}text-red-600{% endif %} mt-0.5 leading-none">
           R$ {{ "%.2f"|format(stats.total_lucro_bruto) }}
         </p>
-        <p class="text-xs text-stone-400 mt-0.5">receita − custo</p>
-        <p class="text-xs font-semibold mt-1 {% if stats.total_lucro_liquido >= 0 %}text-emerald-600{% else %}text-red-500{% endif %}">
-          Líquido: R$ {{ "%.2f"|format(stats.total_lucro_liquido) }}
-        </p>
+        <p class="text-xs text-stone-400 mt-0.5">receita − custo de produção</p>
       </div>
     </div>
 
-    <!-- Lucro Esperado por local -->
-    <div class="bg-white rounded-2xl p-4 shadow-sm border border-amber-100 col-span-2 lg:col-span-1">
-      <p class="text-xs text-stone-500 font-medium mb-3">🎯 Lucro Esperado (se vender tudo)</p>
-      <div class="space-y-2">
-        <div>
-          <div class="flex items-center justify-between">
-            <span class="flex items-center gap-1.5 text-xs text-blue-700 font-medium"><span>🏫</span> Escola (bruto)</span>
-            <span class="font-bold {% if stats.total_lucro_esp_escola >= 0 %}text-emerald-600{% else %}text-red-600{% endif %} text-sm">
-              R$ {{ "%.2f"|format(stats.total_lucro_esp_escola) }}
-            </span>
-          </div>
-          <div class="flex items-center justify-between mt-0.5">
-            <span class="text-[10px] text-blue-500 ml-5">líquido</span>
-            <span class="text-xs font-semibold {% if stats.total_lucro_esp_escola_liquido >= 0 %}text-emerald-500{% else %}text-red-500{% endif %}">
-              R$ {{ "%.2f"|format(stats.total_lucro_esp_escola_liquido) }}
-            </span>
-          </div>
-        </div>
-        <div class="w-full h-px bg-stone-100"></div>
-        <div>
-          <div class="flex items-center justify-between">
-            <span class="flex items-center gap-1.5 text-xs text-purple-700 font-medium"><span>🏢</span> Empresa (bruto)</span>
-            <span class="font-bold {% if stats.total_lucro_esp_empresa >= 0 %}text-emerald-600{% else %}text-red-600{% endif %} text-sm">
-              R$ {{ "%.2f"|format(stats.total_lucro_esp_empresa) }}
-            </span>
-          </div>
-          <div class="flex items-center justify-between mt-0.5">
-            <span class="text-[10px] text-purple-400 ml-5">líquido</span>
-            <span class="text-xs font-semibold {% if stats.total_lucro_esp_empresa_liquido >= 0 %}text-emerald-500{% else %}text-red-500{% endif %}">
-              R$ {{ "%.2f"|format(stats.total_lucro_esp_empresa_liquido) }}
-            </span>
-          </div>
-        </div>
+    <div class="bg-white rounded-2xl p-4 shadow-sm border border-amber-100 flex items-center gap-4">
+      <div class="w-12 h-12 rounded-xl {% if stats.total_lucro_liquido >= 0 %}bg-emerald-100{% else %}bg-red-100{% endif %} flex items-center justify-center text-2xl shrink-0">
+        {% if stats.total_lucro_liquido >= 0 %}✅{% else %}⚠️{% endif %}
+      </div>
+      <div>
+        <p class="text-xs text-stone-500 font-medium">Receita Líquida</p>
+        <p class="text-2xl font-bold {% if stats.total_lucro_liquido >= 0 %}text-emerald-600{% else %}text-red-600{% endif %} mt-0.5 leading-none">
+          R$ {{ "%.2f"|format(stats.total_lucro_liquido) }}
+        </p>
+        <p class="text-xs text-stone-400 mt-0.5">lucro bruto − comissões</p>
       </div>
     </div>
 
@@ -115,6 +156,8 @@
       <p class="text-xs text-stone-500 mt-1 font-medium">📊 Em Estoque</p>
     </div>
   </div>
+
+  {% endif %}
 
   <!-- ── Por Produto + Vendedoras ─────────────────────────────────── -->
   <div class="grid md:grid-cols-2 gap-4">
@@ -172,13 +215,13 @@
               <p class="text-xs text-blue-600 mt-0.5">Receita: R$ {{ "%.2f"|format(sp.receita_escola) }}</p>
               <div class="mt-1.5 pt-1.5 border-t border-blue-200 space-y-0.5">
                 <div class="flex justify-between items-baseline">
-                  <p class="text-[10px] text-blue-400">Bruto</p>
+                  <p class="text-[10px] text-blue-400">Lucro Bruto</p>
                   <p class="text-xs font-semibold {% if sp.lucro_real_escola >= 0 %}text-green-600{% else %}text-red-600{% endif %}">
                     R$ {{ "%.2f"|format(sp.lucro_real_escola) }}
                   </p>
                 </div>
                 <div class="flex justify-between items-baseline">
-                  <p class="text-[10px] text-blue-500 font-medium">Líquido</p>
+                  <p class="text-[10px] text-blue-500 font-medium">Receita Líquida</p>
                   <p class="text-sm font-bold {% if sp.lucro_liquido_escola >= 0 %}text-green-600{% else %}text-red-600{% endif %}">
                     R$ {{ "%.2f"|format(sp.lucro_liquido_escola) }}
                   </p>
@@ -192,13 +235,13 @@
               <p class="text-xs text-purple-600 mt-0.5">Receita: R$ {{ "%.2f"|format(sp.receita_empresa) }}</p>
               <div class="mt-1.5 pt-1.5 border-t border-purple-200 space-y-0.5">
                 <div class="flex justify-between items-baseline">
-                  <p class="text-[10px] text-purple-400">Bruto</p>
+                  <p class="text-[10px] text-purple-400">Lucro Bruto</p>
                   <p class="text-xs font-semibold {% if sp.lucro_real_empresa >= 0 %}text-green-600{% else %}text-red-600{% endif %}">
                     R$ {{ "%.2f"|format(sp.lucro_real_empresa) }}
                   </p>
                 </div>
                 <div class="flex justify-between items-baseline">
-                  <p class="text-[10px] text-purple-500 font-medium">Líquido</p>
+                  <p class="text-[10px] text-purple-500 font-medium">Receita Líquida</p>
                   <p class="text-sm font-bold {% if sp.lucro_liquido_empresa >= 0 %}text-green-600{% else %}text-red-600{% endif %}">
                     R$ {{ "%.2f"|format(sp.lucro_liquido_empresa) }}
                   </p>
@@ -209,43 +252,40 @@
           </div>
           {% endif %}
 
-          <!-- Lucros totais -->
-          <div class="space-y-2 text-xs text-stone-500">
-            <!-- Lucro bruto + líquido do período -->
-            <div class="flex items-center justify-between">
-              <span>Lucro bruto total</span>
-              <strong class="{% if sp.lucro_real >= 0 %}text-green-600{% else %}text-red-600{% endif %}">R$ {{ "%.2f"|format(sp.lucro_real) }}</strong>
+          <!-- Lucros totais (apenas na visão geral — depende de lotes, não por vendedora) -->
+          {% if not vendedora_id %}
+          {% set lucro_producao = sp.receita_real - sp.custo %}
+          {% set lucro_producao_liquido = lucro_producao - sp.comissao_paga_total %}
+          <div class="space-y-3 text-xs text-stone-500">
+
+            <div>
+              <p class="text-[10px] font-semibold text-stone-400 uppercase tracking-wide mb-1.5">📦 Sobre o que foi produzido</p>
+              <div class="flex items-center justify-between">
+                <span>Lucro Bruto</span>
+                <strong class="{% if lucro_producao >= 0 %}text-green-600{% else %}text-red-600{% endif %}">R$ {{ "%.2f"|format(lucro_producao) }}</strong>
+              </div>
+              <div class="flex items-center justify-between pl-2">
+                <span class="text-stone-400">↳ Receita Líquida</span>
+                <strong class="{% if lucro_producao_liquido >= 0 %}text-emerald-600{% else %}text-red-500{% endif %}">R$ {{ "%.2f"|format(lucro_producao_liquido) }}</strong>
+              </div>
             </div>
-            <div class="flex items-center justify-between pl-2">
-              <span class="text-stone-400">↳ Líquido (s/ comissão)</span>
-              <strong class="{% if sp.lucro_liquido >= 0 %}text-emerald-600{% else %}text-red-500{% endif %}">R$ {{ "%.2f"|format(sp.lucro_liquido) }}</strong>
+
+            <div class="w-full h-px bg-stone-100"></div>
+
+            <div>
+              <p class="text-[10px] font-semibold text-stone-400 uppercase tracking-wide mb-1.5">🛍️ Sobre o que foi vendido</p>
+              <div class="flex items-center justify-between">
+                <span>Lucro Bruto</span>
+                <strong class="{% if sp.lucro_real >= 0 %}text-green-600{% else %}text-red-600{% endif %}">R$ {{ "%.2f"|format(sp.lucro_real) }}</strong>
+              </div>
+              <div class="flex items-center justify-between pl-2">
+                <span class="text-stone-400">↳ Receita Líquida</span>
+                <strong class="{% if sp.lucro_liquido >= 0 %}text-emerald-600{% else %}text-red-500{% endif %}">R$ {{ "%.2f"|format(sp.lucro_liquido) }}</strong>
+              </div>
             </div>
-            <div class="w-full h-px bg-stone-100 my-1"></div>
-            <!-- Esperado escola -->
-            <div class="flex items-center justify-between">
-              <span class="flex items-center gap-1">
-                🏫 Esp. escola (bruto)
-                <span class="text-stone-400 font-normal">({{ sp.lotes_qtd }} un.)</span>
-              </span>
-              <strong class="{% if sp.lucro_esp_escola >= 0 %}text-blue-600{% else %}text-red-600{% endif %}">R$ {{ "%.2f"|format(sp.lucro_esp_escola) }}</strong>
-            </div>
-            <div class="flex items-center justify-between pl-2">
-              <span class="text-stone-400">↳ Líquido</span>
-              <strong class="{% if sp.lucro_esp_escola_liquido >= 0 %}text-blue-500{% else %}text-red-500{% endif %}">R$ {{ "%.2f"|format(sp.lucro_esp_escola_liquido) }}</strong>
-            </div>
-            <!-- Esperado empresa -->
-            <div class="flex items-center justify-between">
-              <span class="flex items-center gap-1">
-                🏢 Esp. empresa (bruto)
-                <span class="text-stone-400 font-normal">({{ sp.lotes_qtd }} un.)</span>
-              </span>
-              <strong class="{% if sp.lucro_esp_empresa >= 0 %}text-purple-600{% else %}text-red-600{% endif %}">R$ {{ "%.2f"|format(sp.lucro_esp_empresa) }}</strong>
-            </div>
-            <div class="flex items-center justify-between pl-2">
-              <span class="text-stone-400">↳ Líquido</span>
-              <strong class="{% if sp.lucro_esp_empresa_liquido >= 0 %}text-purple-500{% else %}text-red-500{% endif %}">R$ {{ "%.2f"|format(sp.lucro_esp_empresa_liquido) }}</strong>
-            </div>
+
           </div>
+          {% endif %}
         </div>
         {% endfor %}
       </div>
@@ -276,6 +316,26 @@
           <div class="ml-11 flex gap-3 mt-1 text-xs text-stone-400">
             <span>🛍️ {{ sv.total_vendas_qtd }} vendidos</span>
             <span>😋 {{ sv.total_comidos_qtd }} comidos</span>
+          </div>
+
+          <!-- Receita / Custo / Lucro -->
+          <div class="ml-11 mt-2.5 grid grid-cols-2 gap-2">
+            <div class="bg-red-50 rounded-lg p-2 border border-red-100 text-center">
+              <p class="text-[10px] text-stone-400 font-medium uppercase tracking-wide">Custo</p>
+              <p class="text-xs font-bold text-red-600 mt-0.5">R$ {{ "%.2f"|format(sv.custo) }}</p>
+            </div>
+            <div class="bg-blue-50 rounded-lg p-2 border border-blue-100 text-center">
+              <p class="text-[10px] text-stone-400 font-medium uppercase tracking-wide">Receita Bruta</p>
+              <p class="text-xs font-bold text-blue-600 mt-0.5">R$ {{ "%.2f"|format(sv.receita) }}</p>
+            </div>
+            <div class="bg-amber-50 rounded-lg p-2 border border-amber-100 text-center">
+              <p class="text-[10px] text-stone-400 font-medium uppercase tracking-wide">Lucro Bruto</p>
+              <p class="text-xs font-bold {% if sv.lucro_bruto >= 0 %}text-amber-600{% else %}text-red-600{% endif %} mt-0.5">R$ {{ "%.2f"|format(sv.lucro_bruto) }}</p>
+            </div>
+            <div class="bg-emerald-50 rounded-lg p-2 border border-emerald-100 text-center">
+              <p class="text-[10px] text-stone-400 font-medium uppercase tracking-wide">Receita Líquida</p>
+              <p class="text-xs font-bold {% if sv.receita_liquida >= 0 %}text-emerald-600{% else %}text-red-600{% endif %} mt-0.5">R$ {{ "%.2f"|format(sv.receita_liquida) }}</p>
+            </div>
           </div>
 
           <!-- Comissão -->

@@ -1,0 +1,326 @@
+{% extends "base.html" %}
+{% block title %}Calendário{% endblock %}
+{% block page_title %}Calendário{% endblock %}
+{% block container_class %}p-4 md:p-8 max-w-screen-2xl mx-auto{% endblock %}
+
+{# ── Macro: card de atividade ──────────────────────────────────────── #}
+{% macro card_ativ(ativ, semana_str, sempre_mostrar_delete=false) %}
+  {% if ativ.cor == 'green' %}
+    {% set bg = 'bg-green-100' %}{% set text = 'text-green-900' %}{% set border_c = 'border-green-200' %}{% set strip = 'bg-green-500' %}
+  {% elif ativ.cor == 'blue' %}
+    {% set bg = 'bg-blue-100' %}{% set text = 'text-blue-900' %}{% set border_c = 'border-blue-200' %}{% set strip = 'bg-blue-500' %}
+  {% elif ativ.cor == 'purple' %}
+    {% set bg = 'bg-purple-100' %}{% set text = 'text-purple-900' %}{% set border_c = 'border-purple-200' %}{% set strip = 'bg-purple-500' %}
+  {% elif ativ.cor == 'red' %}
+    {% set bg = 'bg-red-100' %}{% set text = 'text-red-900' %}{% set border_c = 'border-red-200' %}{% set strip = 'bg-red-500' %}
+  {% else %}
+    {% set bg = 'bg-choco-100' %}{% set text = 'text-choco-900' %}{% set border_c = 'border-choco-200' %}{% set strip = 'bg-choco-500' %}
+  {% endif %}
+  <div class="group relative {{ bg }} {{ text }} rounded-xl border {{ border_c }} overflow-hidden">
+    <div class="absolute left-0 top-0 bottom-0 w-1 {{ strip }}"></div>
+    <div class="pl-4 pr-8 py-3">
+      {% if ativ.hora_inicio %}
+      <p class="text-[11px] font-bold opacity-40 mb-0.5 tracking-wide">
+        {{ ativ.hora_inicio }}{% if ativ.hora_fim %} – {{ ativ.hora_fim }}{% endif %}
+      </p>
+      {% endif %}
+      <p class="text-sm font-semibold leading-snug break-words">{{ ativ.titulo }}</p>
+      {% if ativ.descricao %}
+      <p class="text-xs opacity-55 mt-1 leading-snug break-words">{{ ativ.descricao }}</p>
+      {% endif %}
+    </div>
+    <form method="POST" action="{{ url_for('deletar_atividade', id=ativ.id) }}"
+          class="absolute top-2 right-2 {% if not sempre_mostrar_delete %}opacity-0 group-hover:opacity-100{% endif %} transition-opacity">
+      <input type="hidden" name="semana" value="{{ semana_str }}">
+      <button type="submit"
+              class="w-6 h-6 flex items-center justify-center rounded-lg text-current hover:bg-black/10 text-xs font-bold"
+              title="Remover"
+              onclick="return confirm('Remover esta atividade?')">✕</button>
+    </form>
+  </div>
+{% endmacro %}
+
+{% set dia_nomes       = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo'] %}
+{% set dia_nomes_short = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'] %}
+{% set semana_str      = semana_inicio.isoformat() %}
+
+{% block content %}
+
+{# ── Cabeçalho ─────────────────────────────────────────────────────── #}
+<div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+  <div>
+    <h1 class="text-2xl font-bold text-choco-900">Calendário</h1>
+    <p class="text-stone-500 text-sm mt-0.5">
+      {{ semana_inicio.strftime('%d/%m') }} – {{ semana_fim.strftime('%d/%m/%Y') }}
+    </p>
+  </div>
+  <div class="flex items-center gap-2">
+    <a href="{{ url_for('calendario', semana=semana_anterior) }}"
+       class="w-10 h-10 flex items-center justify-center rounded-xl border border-amber-200 bg-white text-choco-700 hover:bg-choco-50 transition font-bold text-xl shadow-sm select-none">‹</a>
+    <a href="{{ url_for('calendario') }}"
+       class="px-4 h-10 flex items-center rounded-xl border border-amber-200 bg-white text-choco-700 hover:bg-choco-50 transition text-sm font-medium shadow-sm">Hoje</a>
+    <a href="{{ url_for('calendario', semana=proxima_semana) }}"
+       class="w-10 h-10 flex items-center justify-center rounded-xl border border-amber-200 bg-white text-choco-700 hover:bg-choco-50 transition font-bold text-xl shadow-sm select-none">›</a>
+    <button onclick="abrirModal(null)"
+            class="ml-1 px-4 h-10 flex items-center gap-2 rounded-xl bg-choco-700 text-white hover:bg-choco-800 transition text-sm font-semibold shadow-sm">
+      <span class="text-lg leading-none">+</span> Nova Atividade
+    </button>
+  </div>
+</div>
+
+{# ══════════════════════════════════════════════════════════════════════
+   MOBILE – pills de dia + painel único
+   ══════════════════════════════════════════════════════════════════════ #}
+<div class="md:hidden">
+
+  {# Carrossel de dias #}
+  <div class="flex gap-2 overflow-x-auto pb-3 -mx-4 px-4" style="scrollbar-width:none">
+    {% for dia in dias_semana %}
+    {% set is_hoje = (dia == hoje) %}
+    {% set tem_ativ = atividades_por_dia.get(dia, [])|length > 0 %}
+    <button onclick="selecionarDia({{ loop.index0 }})"
+            id="mtab-{{ loop.index0 }}"
+            class="flex-shrink-0 flex flex-col items-center gap-0.5 w-16 py-3 rounded-2xl border text-xs transition-all
+                   {% if is_hoje %}ring-2 ring-choco-400 ring-offset-1{% endif %}
+                   border-amber-200 bg-white text-stone-500">
+      <span class="text-[10px] font-bold uppercase tracking-wider">{{ dia_nomes_short[loop.index0] }}</span>
+      <span class="text-2xl font-bold leading-none">{{ dia.strftime('%d') }}</span>
+      <span class="w-1.5 h-1.5 rounded-full mt-0.5 {% if tem_ativ %}bg-choco-400{% else %}bg-transparent{% endif %}"></span>
+    </button>
+    {% endfor %}
+  </div>
+
+  {# Painéis de dia #}
+  {% for dia in dias_semana %}
+  {% set is_hoje = (dia == hoje) %}
+  {% set atividades_dia = atividades_por_dia.get(dia, []) %}
+  <div id="mpanel-{{ loop.index0 }}" class="hidden mt-2">
+    <div class="rounded-2xl border shadow-sm flex flex-col min-h-[420px]
+                {% if is_hoje %}border-choco-300 bg-choco-50{% else %}border-amber-100 bg-white{% endif %}">
+
+      {# Topo do painel #}
+      <div class="flex items-center justify-between px-5 py-4 border-b {% if is_hoje %}border-choco-200{% else %}border-amber-100{% endif %}">
+        <div>
+          <p class="text-xs font-bold uppercase tracking-widest {% if is_hoje %}text-choco-500{% else %}text-stone-400{% endif %}">
+            {{ dia_nomes[loop.index0] }}
+          </p>
+          <p class="text-3xl font-bold leading-none mt-0.5 {% if is_hoje %}text-choco-700{% else %}text-stone-800{% endif %}">
+            {{ dia.strftime('%d') }}
+            <span class="text-base font-medium text-stone-400 ml-1">{{ dia.strftime('%b') }}</span>
+          </p>
+          {% if is_hoje %}
+          <span class="inline-block mt-1 text-[10px] bg-choco-500 text-white px-2 py-0.5 rounded-full font-semibold">Hoje</span>
+          {% endif %}
+        </div>
+        <button onclick="abrirModal('{{ dia.isoformat() }}')"
+                class="flex items-center gap-1.5 px-4 py-2.5 rounded-xl bg-choco-700 text-white text-sm font-semibold hover:bg-choco-800 transition shadow-sm">
+          <span class="text-base leading-none">+</span> Adicionar
+        </button>
+      </div>
+
+      {# Lista de atividades #}
+      <div class="flex-1 p-4">
+        {% if atividades_dia %}
+        <div class="space-y-2.5">
+          {% for ativ in atividades_dia %}
+          {{ card_ativ(ativ, semana_str, sempre_mostrar_delete=true) }}
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="flex flex-col items-center justify-center text-center py-16 opacity-40">
+          <span class="text-5xl mb-3">📅</span>
+          <p class="text-stone-500 text-sm font-medium">Nenhuma atividade neste dia</p>
+        </div>
+        {% endif %}
+      </div>
+    </div>
+  </div>
+  {% endfor %}
+</div>
+
+{# ══════════════════════════════════════════════════════════════════════
+   DESKTOP – grade semanal (7 colunas largas e altas)
+   ══════════════════════════════════════════════════════════════════════ #}
+<div class="hidden md:block overflow-x-auto">
+  <div class="grid grid-cols-7 gap-3" style="min-width:1050px">
+    {% for dia in dias_semana %}
+    {% set is_hoje = (dia == hoje) %}
+    {% set atividades_dia = atividades_por_dia.get(dia, []) %}
+
+    <div class="rounded-2xl border flex flex-col shadow-sm hover:shadow-md transition-shadow
+                {% if is_hoje %}border-choco-400 bg-choco-50{% else %}border-amber-100 bg-white{% endif %}"
+         style="height:560px">
+
+      {# Cabeçalho do dia #}
+      <div class="px-4 pt-4 pb-3 border-b flex-shrink-0
+                  {% if is_hoje %}border-choco-200{% else %}border-amber-100{% endif %}">
+        <p class="text-[11px] font-bold uppercase tracking-widest
+                  {% if is_hoje %}text-choco-500{% else %}text-stone-400{% endif %}">
+          {{ dia_nomes_short[loop.index0] }}
+        </p>
+        <p class="text-3xl font-bold leading-none mt-1
+                  {% if is_hoje %}text-choco-700{% else %}text-stone-700{% endif %}">
+          {{ dia.strftime('%d') }}
+        </p>
+        {% if is_hoje %}
+        <span class="inline-block mt-1.5 text-[10px] bg-choco-500 text-white px-2 py-0.5 rounded-full font-semibold">Hoje</span>
+        {% endif %}
+      </div>
+
+      {# Atividades com scroll interno #}
+      <div class="flex-1 p-3 space-y-2 overflow-y-auto min-h-0">
+        {% for ativ in atividades_dia %}
+        {{ card_ativ(ativ, semana_str) }}
+        {% endfor %}
+      </div>
+
+      {# Botão rápido de adicionar #}
+      <div class="p-3 flex-shrink-0 border-t border-dashed
+                  {% if is_hoje %}border-choco-200{% else %}border-amber-100{% endif %}">
+        <button onclick="abrirModal('{{ dia.isoformat() }}')"
+                class="w-full text-xs font-medium rounded-xl py-2 transition
+                       {% if is_hoje %}text-choco-400 hover:bg-choco-100{% else %}text-stone-300 hover:text-choco-500 hover:bg-choco-50{% endif %}">
+          + adicionar
+        </button>
+      </div>
+    </div>
+    {% endfor %}
+  </div>
+</div>
+
+{# ══════════════════════════════════════════════════════════════════════
+   Modal de nova atividade
+   ══════════════════════════════════════════════════════════════════════ #}
+<div id="modal-add" class="hidden fixed inset-0 bg-black/40 z-50 flex items-end sm:items-center justify-center sm:p-4">
+  <div class="bg-white rounded-t-3xl sm:rounded-2xl shadow-2xl w-full sm:max-w-md max-h-[92vh] overflow-y-auto">
+
+    <div class="px-6 pt-5 pb-4 border-b border-amber-100 flex items-center justify-between sticky top-0 bg-white rounded-t-3xl sm:rounded-t-2xl z-10">
+      <h2 class="text-lg font-bold text-choco-900">Nova Atividade</h2>
+      <button onclick="fecharModal()"
+              class="w-8 h-8 flex items-center justify-center rounded-lg text-stone-400 hover:text-stone-700 hover:bg-stone-100 transition text-xl">✕</button>
+    </div>
+
+    <form method="POST" action="{{ url_for('add_atividade') }}" class="p-6 space-y-4">
+      <input type="hidden" name="semana" value="{{ semana_str }}">
+
+      <div>
+        <label class="block text-xs font-semibold text-stone-500 mb-1.5">Título *</label>
+        <input type="text" name="titulo" required placeholder="Ex.: Entregar brownies na escola"
+               class="w-full border border-amber-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-choco-300">
+      </div>
+
+      <div>
+        <label class="block text-xs font-semibold text-stone-500 mb-1.5">Data *</label>
+        <input type="date" name="data" id="form-data" required
+               class="w-full border border-amber-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-choco-300">
+      </div>
+
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-xs font-semibold text-stone-500 mb-1.5">Início</label>
+          <input type="time" name="hora_inicio"
+                 class="w-full border border-amber-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-choco-300">
+        </div>
+        <div>
+          <label class="block text-xs font-semibold text-stone-500 mb-1.5">Fim</label>
+          <input type="time" name="hora_fim"
+                 class="w-full border border-amber-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-choco-300">
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-xs font-semibold text-stone-500 mb-1.5">Descrição</label>
+        <textarea name="descricao" rows="2" placeholder="Detalhes opcionais..."
+                  class="w-full border border-amber-200 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:ring-2 focus:ring-choco-300 resize-none"></textarea>
+      </div>
+
+      <div>
+        <label class="block text-xs font-semibold text-stone-500 mb-2">Cor</label>
+        <div class="flex gap-3">
+          {% for cor_val, label, dot_cls in [
+              ('choco',  'Chocolate', 'bg-choco-500'),
+              ('green',  'Verde',     'bg-green-500'),
+              ('blue',   'Azul',      'bg-blue-500'),
+              ('purple', 'Roxo',      'bg-purple-500'),
+              ('red',    'Vermelho',  'bg-red-500')
+          ] %}
+          <label class="cursor-pointer" title="{{ label }}">
+            <input type="radio" name="cor" value="{{ cor_val }}"
+                   {% if cor_val == 'choco' %}checked{% endif %}
+                   class="sr-only peer">
+            <span class="block w-8 h-8 rounded-full {{ dot_cls }} ring-2 ring-transparent
+                         peer-checked:ring-offset-2 peer-checked:ring-stone-500 transition-all hover:scale-110"></span>
+          </label>
+          {% endfor %}
+        </div>
+      </div>
+
+      <div class="flex gap-3 pt-2">
+        <button type="button" onclick="fecharModal()"
+                class="flex-1 border border-amber-200 text-stone-600 rounded-xl py-3 text-sm font-medium hover:bg-amber-50 transition">
+          Cancelar
+        </button>
+        <button type="submit"
+                class="flex-1 bg-choco-700 text-white rounded-xl py-3 text-sm font-semibold hover:bg-choco-800 transition">
+          Salvar
+        </button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}
+
+{% block scripts %}
+<script>
+  // ── Mobile: seleção de dia ────────────────────────────────────────────
+  const TOTAL_DIAS = 7;
+
+  function selecionarDia(idx) {
+    for (let i = 0; i < TOTAL_DIAS; i++) {
+      const tab   = document.getElementById('mtab-' + i);
+      const panel = document.getElementById('mpanel-' + i);
+      if (!tab || !panel) continue;
+      const ativo = i === idx;
+      // tab
+      tab.classList.toggle('bg-choco-700',   ativo);
+      tab.classList.toggle('text-white',      ativo);
+      tab.classList.toggle('border-choco-700', ativo);
+      tab.classList.toggle('bg-white',        !ativo);
+      tab.classList.toggle('text-stone-500',  !ativo);
+      tab.classList.toggle('border-amber-200', !ativo);
+      // panel
+      panel.classList.toggle('hidden', !ativo);
+    }
+  }
+
+  // Seleciona hoje (ou o primeiro dia se não for essa semana)
+  selecionarDia({{ hoje_semana_idx }} >= 0 ? {{ hoje_semana_idx }} : 0);
+
+  // ── Modal ─────────────────────────────────────────────────────────────
+  function abrirModal(data) {
+    const modal = document.getElementById('modal-add');
+    modal.classList.remove('hidden');
+    document.body.style.overflow = 'hidden';
+    const campo = document.getElementById('form-data');
+    if (data) {
+      campo.value = data;
+    } else if (!campo.value) {
+      campo.value = '{{ hoje.isoformat() }}';
+    }
+  }
+
+  function fecharModal() {
+    document.getElementById('modal-add').classList.add('hidden');
+    document.body.style.overflow = '';
+  }
+
+  document.getElementById('modal-add').addEventListener('click', e => {
+    if (e.target === e.currentTarget) fecharModal();
+  });
+
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') fecharModal();
+  });
+</script>
+{% endblock %}
