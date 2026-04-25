@@ -103,9 +103,6 @@ fi
 # ── Serviço systemd ──────────────────────────────────────────
 info "Criando serviço systemd em ${SERVICE_FILE}..."
 
-# Número de workers: 2 para dispositivos ARM com memória limitada
-WORKERS=2
-
 cat > "${SERVICE_FILE}" <<EOF
 [Unit]
 Description=BrownieSystem
@@ -117,13 +114,7 @@ User=${RUN_USER}
 Group=${RUN_USER}
 WorkingDirectory=${APP_DIR}
 EnvironmentFile=${ENV_FILE}
-ExecStart=${VENV_DIR}/bin/gunicorn \\
-    --workers ${WORKERS} \\
-    --bind 0.0.0.0:${PORT} \\
-    --access-logfile - \\
-    --error-logfile - \\
-    --timeout 60 \\
-    app:app
+ExecStart=${VENV_DIR}/bin/python ${APP_DIR}/app.py
 Restart=on-failure
 RestartSec=5
 StandardOutput=journal
